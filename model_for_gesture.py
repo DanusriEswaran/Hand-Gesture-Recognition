@@ -4,9 +4,17 @@ import keras
 from keras.preprocessing.image import ImageDataGenerator
 import tensorflow as tf
 import subprocess
+from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume, IAudioEndpointVolume
+from comtypes import CLSCTX_ALL
+from ctypes import cast, POINTER
+import ctypes
+import wmi
+import os
+
+
 
 # Load the pre-trained model
-model = keras.models.load_model(r"C:..\MLPROJECT\best_model_dataflair3.h5")
+model = keras.models.load_model(r"C:\Users\Danusri\MLPROJECT 2.0\best_model_dataflair3.h5")
 
 # Constants for region of interest (ROI)
 ROI_top = 100
@@ -16,44 +24,112 @@ ROI_left = 350
 
 # Dictionary mapping gestures to actions
 action_dict = {
-    0: 'open',
-    1: 'play',
-    2: 'volume_increase',
-    3: 'volume_decrease',
-    4: 'mute',
-    5: 'next',
-    6: 'previous',
-    7: 'add_to_queue',
-    8: 'stop',
-    9: 'close'
+    0: 'one',
+    1: 'two',
+    2: 'three',
+    3: 'four',
+    4: 'five',
+    5: 'six',
+    6: 'seven',
+    7: 'eight',
+    8: 'nine',
+    9: 'ten'
 }
+
+def increase_volume():
+    devices = AudioUtilities.GetSpeakers()
+    interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    volume = cast(interface, POINTER(IAudioEndpointVolume))
+    current_volume = volume.GetMasterVolumeLevelScalar()
+    new_volume = min(1.0, current_volume + 0.1)  
+    volume.SetMasterVolumeLevelScalar(new_volume, None)
+
+def decrease_volume():
+    devices = AudioUtilities.GetSpeakers()
+    interface = devices.Activate(ISimpleAudioVolume._iid_, CLSCTX_ALL, None)
+    volume = cast(interface, POINTER(ISimpleAudioVolume))
+    current_volume = volume.GetMasterVolume()
+    new_volume = max(0.0, current_volume - 0.1)  
+    volume.SyyyetMasterVolume(new_volume, None)
+
+# Function to increase brightness
+def increase_brightness():
+    brightness_value = 50  
+   # Connect to WMI
+    wmi_obj = wmi.WMI(namespace='wmi')
+
+    # Iterate through monitors
+    monitors = wmi_obj.WmiMonitorBrightnessMethods()
+    for monitor in monitors:
+        monitor.WmiSetBrightness(brightness_value, 0)
+        
+def decrease_brightness():
+    brightness_value = 30   
+
+    # Connect to WMI
+    wmi_obj = wmi.WMI(namespace='wmi')
+
+    # Iterate through monitors
+    monitors = wmi_obj.WmiMonitorBrightnessMethods()
+    for monitor in monitors:
+        monitor.WmiSetBrightness(brightness_value, 0)
 
 accumulated_weight = 0.5
 
 
 # Function to perform actions based on recognized gestures
 def perform_action(action):
-    if action == 'open':
-        print("Performing 'open' action...")
-        subprocess.Popen(['..\\Spotify.exe'])
-    elif action == 'play':
-        print("Performing 'play' action...")
-    elif action == 'volume_increase':
-        print("Performing 'volume increase' action...")
-    elif action == 'volume_decrease':
-        print("Performing 'volume decrease' action...")
-    elif action == 'mute':
-        print("Performing 'mute' action...")
-    elif action == 'next':
-        print("Performing 'next' action...")
-    elif action == 'previous':
-        print("Performing 'previous' action...")
-    elif action == 'add_to_queue':
-        print("Performing 'add to queue / favourites' action...")
-    elif action == 'stop':
-        print("Performing 'stop' action...")
-    elif action == 'close':
-        print("Performing 'close' action...")
+    if action == 'one':
+        print("Performing action 1")
+        print("Decreasing Brightness")
+        decrease_brightness()
+    
+    elif action == 'two':
+        print("Performing action 2")
+        print("Opening Notepad")
+        subprocess.Popen(['C:\\Users\\Danusri\\AppData\\Local\\Microsoft\\WindowsApps\\notepad.exe'])
+    
+    elif action == 'three':
+        print("Performing action 3")
+        print("Increasing Volume")
+        increase_volume()
+            
+    elif action == 'four':
+        print("Performing action 4")
+        print("Opening Pictures")
+        pictures_folder = os.path.expanduser('C:/Users/Danusri/OneDrive/Pictures')  # Path to the Pictures folder
+        os.startfile(pictures_folder)
+        
+    elif action == 'five':
+        print("Performing action 5")
+        print("Increasing Brightness")
+        increase_brightness()
+    
+    elif action == 'six':
+        print("Performing action 6")
+        print("Opening Pictures")
+        pictures_folder = os.path.expanduser('C:/Users/Danusri/OneDrive/Pictures')  # Path to the Pictures folder
+        os.startfile(pictures_folder)
+        
+    elif action == 'seven':
+        print("Performing action 7")
+        print("Opening Notepad")
+        subprocess.Popen(['C:\\Users\\Danusri\\AppData\\Local\\Microsoft\\WindowsApps\\notepad.exe'])
+        
+    elif action == 'eight':
+        print("Performing action 8")
+        print("SOPTIFY IS OPENING")
+        subprocess.Popen(['C:\\Users\\Danusri\\AppData\\Local\\Microsoft\\WindowsApps\\Spotify.exe'])
+    
+    elif action == 'nine':
+        print("Performing action 9")
+        print("Decreasing Volume")
+        decrease_volume()
+    
+    elif action == 'ten':
+        print("Performing action 10")
+        print("Increasing Brightness")
+        increase_brightness()
 
 # Function to calculate accumulated average for background
 def cal_accum_avg(frame, accumulated_weight):
@@ -85,6 +161,8 @@ cam = cv2.VideoCapture(0)
 num_frames = 0
 background = None
 
+action_performed = False
+
 while True:
     ret, frame = cam.read()
     frame = cv2.flip(frame, 1)
@@ -106,7 +184,7 @@ while True:
             cv2.drawContours(frame_copy, [hand_segment + (ROI_right, ROI_top)], -1, (255, 0, 0), 1)
             cv2.imshow("Thresholded Hand Image", thresholded)
 
-            if num_frames > 300:
+            if num_frames > 300 and not action_performed:  # Check if action hasn't been performed yet
                 thresholded_resized = cv2.resize(thresholded, (64, 64))
                 thresholded_resized = cv2.cvtColor(thresholded_resized, cv2.COLOR_GRAY2RGB)
                 thresholded_resized = np.reshape(thresholded_resized, (1, thresholded_resized.shape[0], thresholded_resized.shape[1], 3))
@@ -118,6 +196,10 @@ while True:
                     action = action_dict[gesture_index]
                     print("Detected Gesture:", action)
                     perform_action(action)
+                    action_performed = True  # Set flag to True after performing the action
+       
+    if action_performed:
+        break
 
 
     cv2.rectangle(frame_copy, (ROI_left, ROI_top), (ROI_right, ROI_bottom), (255,128,0), 3)
@@ -125,7 +207,7 @@ while True:
     cv2.imshow("Sign Detection", frame_copy)
 
     num_frames += 1
-    k = cv2.waitKey(1) & 0xFF
+    k = cv2.waitKey(1) & 0xF
     if k == 27:
         break
 
